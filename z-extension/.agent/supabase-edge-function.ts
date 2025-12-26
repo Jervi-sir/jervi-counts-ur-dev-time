@@ -120,14 +120,26 @@ serve(async (req) => {
     for (const dayData of data) {
       const { day, focusedSeconds, totalSeconds, languageBreakdown, source } = dayData
 
+      // --- 1. Daily Totals (Accumulate) ---
+      // Fetch existing counts to add to them
+      const { data: existingDaily } = await supabaseAdmin
+        .from('daily_totals')
+        .select('focused_seconds, total_seconds')
+        .eq('user_id', supabaseUserId)
+        .eq('day', day)
+        .maybeSingle()
+
+      const currentFocused = (existingDaily?.focused_seconds || 0) + focusedSeconds
+      const currentTotal = (existingDaily?.total_seconds || 0) + totalSeconds
+
       // Upsert daily_totals
       const { error: dailyError } = await supabaseAdmin
         .from('daily_totals')
         .upsert({
           user_id: supabaseUserId, // UUID
           day: day,
-          focused_seconds: focusedSeconds,
-          total_seconds: totalSeconds, // NEW: Track total time regardless of focus
+          focused_seconds: currentFocused,
+          total_seconds: currentTotal,
           source: source || 'vscode',
           updated_at: new Date().toISOString()
         }, {
@@ -141,25 +153,45 @@ serve(async (req) => {
         results.dailyTotals++
       }
 
-      // Upsert daily_language_totals
-      for (const [language, seconds] of Object.entries(languageBreakdown)) {
-        if (seconds > 0) {
-          const { error: langError } = await supabaseAdmin
-            .from('daily_language_totals')
-            .upsert({
+      // --- 2. Language Totals (Accumulate) ---
+      if (Object.keys(languageBreakdown).length > 0) {
+        // Fetch existing languages for this user+day to accumulate
+        const { data: existingLangs } = await supabaseAdmin
+          .from('daily_language_totals')
+          .select('language, focused_seconds')
+          .eq('user_id', supabaseUserId)
+          .eq('day', day)
+
+        const existingLangMap = new Map<string, number>()
+        if (existingLangs) {
+          existingLangs.forEach((r: any) => existingLangMap.set(r.language, r.focused_seconds))
+        }
+
+        const langUpserts = []
+        for (const [language, seconds] of Object.entries(languageBreakdown)) {
+          if (seconds > 0) {
+            const previousSeconds = existingLangMap.get(language) || 0
+            langUpserts.push({
               user_id: supabaseUserId, // UUID
               day: day,
               language: language,
-              focused_seconds: seconds,
+              focused_seconds: previousSeconds + seconds, // Add new time to existing
               updated_at: new Date().toISOString()
-            }, {
+            })
+          }
+        }
+
+        if (langUpserts.length > 0) {
+          const { error: langBatchError } = await supabaseAdmin
+            .from('daily_language_totals')
+            .upsert(langUpserts, {
               onConflict: 'user_id,day,language'
             })
 
-          if (langError) {
-            results.errors.push(`Lang (${language}): ${langError.message}`)
+          if (langBatchError) {
+            results.errors.push(`Language Batch Error: ${langBatchError.message}`)
           } else {
-            results.languageTotals++
+            results.languageTotals += langUpserts.length
           }
         }
       }

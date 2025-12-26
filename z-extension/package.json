@@ -3,11 +3,12 @@
   "displayName": "jervi-counts-ur-dev-time",
   "publisher": "jervi-sir",
   "description": "I count ur dev time, so we see who codes more then me",
+  "icon": "images/icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/jervi-sir/jervi-counts-ur-dev-time"
   },
-  "version": "0.0.1",
+  "version": "0.0.21",
   "engines": {
     "vscode": "^1.104.0"
   },

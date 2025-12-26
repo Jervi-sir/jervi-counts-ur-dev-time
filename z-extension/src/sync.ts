@@ -5,45 +5,78 @@ import * as vscode from "vscode";
 import { SUPABASE_CONFIG, STORAGE_KEYS } from "./config";
 import { SyncPayload, PendingSyncData, LanguageTotals } from "./types";
 
+interface SyncSnapshot {
+  dailyTotals: Record<string, number>;
+  dailyTotalSeconds: Record<string, number>;
+  languageTotals: LanguageTotals;
+}
+
 /**
- * Build the sync payload from accumulated data
+ * Build the sync payload calculating Deltas (New - Synced)
  */
-export function buildSyncPayload(
+export function buildDeltaPayload(
   username: string,
-  dailyTotals: Record<string, number>,
-  dailyTotalSeconds: Record<string, number>,
-  languageTotals: LanguageTotals
-): SyncPayload {
+  current: SyncSnapshot,
+  synced: SyncSnapshot
+): { payload: SyncPayload; snapshotUsed: SyncSnapshot } {
   const data: PendingSyncData[] = [];
 
-  // Get all unique days from both focused and total seconds
+  // Clone current state to capture as snapshot for after-sync update
+  // We use the values captured HERE to update the 'synced' state later
+  const snapshotUsed: SyncSnapshot = {
+    dailyTotals: { ...current.dailyTotals },
+    dailyTotalSeconds: { ...current.dailyTotalSeconds },
+    languageTotals: JSON.parse(JSON.stringify(current.languageTotals))
+  };
+
+  // Get all unique days
   const allDays = new Set([
-    ...Object.keys(dailyTotals),
-    ...Object.keys(dailyTotalSeconds)
+    ...Object.keys(current.dailyTotals),
+    ...Object.keys(current.dailyTotalSeconds)
   ]);
 
-  // Iterate through each day that has data
   for (const day of allDays) {
-    const focusedSeconds = dailyTotals[day] || 0;
-    const totalSeconds = dailyTotalSeconds[day] || 0;
+    const curFocused = current.dailyTotals[day] || 0;
+    const curTotal = current.dailyTotalSeconds[day] || 0;
 
-    // Only sync if there's any time recorded
-    if (focusedSeconds > 0 || totalSeconds > 0) {
-      const languageBreakdown = languageTotals[day] || {};
+    const syncFocused = synced.dailyTotals[day] || 0;
+    const syncTotal = synced.dailyTotalSeconds[day] || 0;
 
+    const deltaFocused = Math.max(0, curFocused - syncFocused);
+    const deltaTotal = Math.max(0, curTotal - syncTotal);
+
+    // Calculate Language Deltas
+    const curLangs = current.languageTotals[day] || {};
+    const syncLangs = synced.languageTotals[day] || {};
+
+    const deltaLangs: Record<string, number> = {};
+    let hasLangDeltas = false;
+
+    // Check all languages in current day
+    for (const [lang, secs] of Object.entries(curLangs)) {
+      const prev = syncLangs[lang] || 0;
+      const d = Math.max(0, secs - prev);
+      if (d > 0) {
+        deltaLangs[lang] = d;
+        hasLangDeltas = true;
+      }
+    }
+
+    // Only add to payload if there is NEW data to add
+    if (deltaFocused > 0 || deltaTotal > 0 || hasLangDeltas) {
       data.push({
         day,
-        focusedSeconds,
-        totalSeconds,
-        languageBreakdown,
+        focusedSeconds: deltaFocused,
+        totalSeconds: deltaTotal,
+        languageBreakdown: deltaLangs,
         source: "vscode"
       });
     }
   }
 
   return {
-    username,
-    data
+    payload: { username, data },
+    snapshotUsed
   };
 }
 
@@ -55,29 +88,36 @@ export async function syncToSupabase(
   username: string
 ): Promise<boolean> {
   try {
-    // Get accumulated data
-    const dailyTotals = context.globalState.get<Record<string, number>>(STORAGE_KEYS.DAILY, {});
-    const dailyTotalSeconds = context.globalState.get<Record<string, number>>(STORAGE_KEYS.DAILY_TOTAL, {});
-    const languageTotals = context.globalState.get<LanguageTotals>(STORAGE_KEYS.LANGUAGE_TOTALS, {});
+    // 1. Get Current Accumulated Totals (The "Truth")
+    const current: SyncSnapshot = {
+      dailyTotals: context.globalState.get<Record<string, number>>(STORAGE_KEYS.DAILY, {}),
+      dailyTotalSeconds: context.globalState.get<Record<string, number>>(STORAGE_KEYS.DAILY_TOTAL, {}),
+      languageTotals: context.globalState.get<LanguageTotals>(STORAGE_KEYS.LANGUAGE_TOTALS, {})
+    };
 
-    // Build payload
-    const payload = buildSyncPayload(username, dailyTotals, dailyTotalSeconds, languageTotals);
+    // 2. Get Last Successfully Synced Totals (The "Baseline")
+    const synced: SyncSnapshot = {
+      dailyTotals: context.globalState.get<Record<string, number>>(STORAGE_KEYS.SYNCED_DAILY, {}),
+      dailyTotalSeconds: context.globalState.get<Record<string, number>>(STORAGE_KEYS.SYNCED_DAILY_TOTAL, {}),
+      languageTotals: context.globalState.get<LanguageTotals>(STORAGE_KEYS.SYNCED_LANGUAGE, {})
+    };
 
-    // Skip if no data to sync
+    // 3. Build Delta Payload
+    const { payload, snapshotUsed } = buildDeltaPayload(username, current, synced);
+
+    // 4. Skip if nothing new
     if (payload.data.length === 0) {
-      console.log('No data to sync');
+      console.log('No new data to sync');
       return true;
     }
 
-    // Construct Edge Function URL
-    // Construct Edge Function URL
+    // 5. Send to Supabase
     const edgeFunctionUrl = `${SUPABASE_CONFIG.url}/functions/v1/${SUPABASE_CONFIG.edgeFunctionName}`;
 
-    console.log(`[Sync] Target: ${edgeFunctionUrl}`);
-    console.log(`[Sync] Payload size: ${payload.data.length} days for user: ${username}`);
-    console.log(JSON.stringify(payload, null, 2)); // Now enabled for debugging 
+    console.log(`[Sync] Sending Deltas: ${payload.data.length} days`);
+    // detailed logging for debug
+    // console.log(JSON.stringify(payload, null, 2));
 
-    // Send to Supabase Edge Function
     const response = await fetch(edgeFunctionUrl, {
       method: 'POST',
       headers: {
@@ -90,14 +130,17 @@ export async function syncToSupabase(
     const responseText = await response.text();
 
     if (!response.ok) {
-      console.error(`[Sync] Failed: ${response.status} ${response.statusText}`);
-      console.error(`[Sync] Response Body: ${responseText}`);
       throw new Error(`Sync failed: ${response.status} - ${responseText}`);
     }
 
-    console.log(`[Sync] Success! Response: ${responseText}`);
-    const result = JSON.parse(responseText);
-    console.log('Sync successful:', result);
+    console.log(`[Sync] Success!`);
+
+    // 6. Update "Synced" State to match the snapshot we just sent
+    // We update the baseline to be what we just calculated as "Current"
+    // So next time, we only send what is added on top of this.
+    await context.globalState.update(STORAGE_KEYS.SYNCED_DAILY, snapshotUsed.dailyTotals);
+    await context.globalState.update(STORAGE_KEYS.SYNCED_DAILY_TOTAL, snapshotUsed.dailyTotalSeconds);
+    await context.globalState.update(STORAGE_KEYS.SYNCED_LANGUAGE, snapshotUsed.languageTotals);
 
     // Update last sync timestamp
     await context.globalState.update(STORAGE_KEYS.LAST_SYNC, Date.now());
@@ -105,7 +148,9 @@ export async function syncToSupabase(
     return true;
   } catch (error) {
     console.error('Sync error:', error);
-    vscode.window.showErrorMessage(`Failed to sync: ${error instanceof Error ? error.message : String(error)}`);
+    // Don't show error message box effectively on every interval if internet is down, 
+    // just log it. Only show if manually triggered? 
+    // For now we keep it silent or use a status bar warning if we wanted.
     return false;
   }
 }
@@ -138,3 +183,4 @@ export function formatLastSync(timestamp: number): string {
     return `${hours}h ${minutes % 60}m ago`;
   }
 }
+

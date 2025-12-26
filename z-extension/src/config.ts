@@ -23,6 +23,12 @@ export const STORAGE_KEYS = {
   PROJECT: "ctc.projectTotal",
   PENDING_SYNC: "ctc.pendingSync",
   LANGUAGE_TOTALS: "ctc.languageTotals",
+
+  // Track what we have successfully synced to allow delta updates
+  SYNCED_DAILY: "ctc.syncedDailyTotals",
+  SYNCED_DAILY_TOTAL: "ctc.syncedDailyTotalSeconds",
+  SYNCED_LANGUAGE: "ctc.syncedLanguageTotals",
+
   USER_ID: "ctc.userId",
   USER_EMAIL: "ctc.userEmail",
   LAST_SYNC: "ctc.lastSync"

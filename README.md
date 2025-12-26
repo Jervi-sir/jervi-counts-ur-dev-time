@@ -1,88 +1,108 @@
-### seeding fake data
-```
-npx tsx db/seed.ts
-```
+# Jervi Counts Ur Dev Time
 
-### supabase queries
-```
--- 1) function that runs with elevated privileges
-create or replace function public.handle_new_user()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  insert into public.profiles (id, username, full_name, avatar_url)
-  values (
-    new.id,
-    coalesce(
-      new.raw_user_meta_data->>'user_name',
-      new.raw_user_meta_data->>'preferred_username',
-      new.raw_user_meta_data->>'login'
-    ),
-    coalesce(
-      new.raw_user_meta_data->>'full_name',
-      new.raw_user_meta_data->>'name'
-    ),
-    new.raw_user_meta_data->>'avatar_url'
-  )
-  on conflict (id) do nothing;
+**Track your coding flow. Automatically.**
 
-  return new;
-end;
-$$;
+Jervi Counts Ur Dev Time is a comprehensive developer productivity tool that integrates directly with VS Code to log your programming activity. Visualize your habits, identify peak productivity hours, and compete on the global leaderboard.
 
--- 2) trigger on auth.users
-drop trigger if exists on_auth_user_created on auth.users;
+## 🚀 Features
 
-create trigger on_auth_user_created
-after insert on auth.users
-for each row
-execute procedure public.handle_new_user();
-```
+- **Automated Time Tracking**: Seamlessly tracks your coding activity directly from VS Code.
+- **Detailed Analytics**: View your daily, weekly, and monthly coding stats.
+- **Leaderboard**: Compete with other developers and see who codes the most (or who has no life... just kidding!).
+- **Language Breakdown**: See which languages you use the most.
+- **Modern Dashboard**: A beautiful, responsive dashboard built with Next.js and Tailwind CSS.
+- **Antigravity Compatible**: Instructions included for running in Antigravity environments.
 
+## 🛠️ Tech Stack
 
-### Enable RLS
-```
-alter table public.profiles enable row level security;
-alter table public.daily_totals enable row level security;
-```
+- **Framework**: [Next.js 15](https://nextjs.org/)
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **Database**: [PostgreSQL (Neon)](https://neon.tech/) / [Supabase](https://supabase.com/)
+- **ORM**: [Drizzle ORM](https://orm.drizzle.team/)
+- **Icons**: [Lucide React](https://lucide.dev/)
 
-### Profiles policies
-```
--- Everyone logged-in can read profiles (for leaderboard)
-create policy "profiles_select_authenticated"
-on public.profiles for select
-to authenticated
-using (true);
+## 🏁 Getting Started
 
--- User can update their own profile
-create policy "profiles_update_own"
-on public.profiles for update
-to authenticated
-using (auth.uid() = id)
-with check (auth.uid() = id);
-```
+Follow these steps to get the project running locally.
 
-### Daily totals policies
-```
--- Logged-in users can read totals (leaderboard)
-create policy "daily_totals_select_authenticated"
-on public.daily_totals for select
-to authenticated
-using (true);
+### Prerequisites
 
--- User can insert/update their own totals
-create policy "daily_totals_insert_own"
-on public.daily_totals for insert
-to authenticated
-with check (auth.uid() = user_id);
+- Node.js 18+ installed on your machine.
+- A Supabase project set up.
 
-create policy "daily_totals_update_own"
-on public.daily_totals for update
-to authenticated
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
+### Installation
 
-```
+1.  **Clone the repository:**
+
+    ```bash
+    git clone https://github.com/jervi-sir/jervi-counts-ur-dev-time.git
+    cd jervi-counts-ur-dev-time
+    ```
+
+2.  **Install dependencies:**
+
+    ```bash
+    npm install
+    ```
+
+3.  **Environment Setup:**
+
+    Copy the example environment file and update it with your credentials:
+
+    ```bash
+    cp .env.example .env
+    ```
+
+    Update `.env` with your Keys:
+    ```env
+    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=your_supabase_anon_key
+    DATABASE_URL="postgres://..."
+    ```
+
+4.  **Database Setup:**
+
+    Generate and push the migrations to your database:
+
+    ```bash
+    npm run db:generate
+    npm run db:migrate
+    ```
+
+5.  **Run the Development Server:**
+
+    ```bash
+    npm run dev
+    ```
+
+    Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+## 🧩 VS Code Extension
+
+The VS Code extension source code is located in the `z-extension` directory.
+
+To install the extension:
+1.  Visit the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=jervi-sir.jervi-counts-ur-dev-time).
+2.  Or search for `jervi-counts-ur-dev-time` in the Extensions view (`Ctrl+Shift+X`).
+
+For local development of the extension, refer to `z-extension/README.md`.
+
+## 🤝 Contributing
+
+Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+
+1.  Fork the Project
+2.  Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3.  Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4.  Push to the Branch (`git push origin feature/AmazingFeature`)
+5.  Open a Pull Request
+
+## 📄 License
+
+Distributed under the MIT License. See `LICENSE` for more information.
+
+## 👏 Acknowledgments
+
+- Built by [Jervi-sir](https://github.com/jervi-sir)
+- Inspired by the need to know if I'm working hard or hardly working.
