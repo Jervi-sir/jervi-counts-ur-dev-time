@@ -6,7 +6,6 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { desc, eq, gte, sql } from "drizzle-orm";
 import Link from "next/link";
-import Image from "next/image";
 import { Pagination } from "@/components/pagination";
 
 // Helper for duration
@@ -30,7 +29,7 @@ export default async function LeaderboardPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return redirect("/login");
+  // if (!user) return redirect("/login");
 
   const params = await searchParams;
   const page = Number(params.page) || 1;
@@ -83,7 +82,7 @@ export default async function LeaderboardPage({
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
   return (
-    <div className="w-full max-w-5xl mx-auto p-8 space-y-8">
+    <div className="w-full max-w-4xl mx-auto p-8 space-y-8">
       <div className="border-b pb-6">
         <h1 className="text-3xl font-bold">Leaderboard</h1>
         <p className="text-muted-foreground mt-1">
@@ -125,13 +124,6 @@ export default async function LeaderboardPage({
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <img
-                            src={
-                              score.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${score.userId}`
-                            }
-                            alt={score.username || "User"}
-                            className="w-8 h-8 rounded-full bg-muted object-cover border"
-                          />
                           <Link
                             href={`/u/${score.username}`}
                             className="font-medium hover:underline truncate max-w-[120px]"
@@ -184,13 +176,6 @@ export default async function LeaderboardPage({
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <img
-                            src={
-                              score.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${score.userId}`
-                            }
-                            alt={score.username || "User"}
-                            className="w-8 h-8 rounded-full bg-muted object-cover border"
-                          />
                           <Link
                             href={`/u/${score.username}`}
                             className="font-medium hover:underline truncate max-w-[120px]"
