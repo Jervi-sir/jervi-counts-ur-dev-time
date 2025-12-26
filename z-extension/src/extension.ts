@@ -249,39 +249,24 @@ export function activate(context: vscode.ExtensionContext) {
 			const tProject = getProjectSeconds();
 			const isPaused = !state.enabled;
 
-			const items: vscode.QuickPickItem[] = [
-				{
-					label: `📊 Today: ${formatHMS(tToday)}`,
-					description: `Project: ${formatHMS(tProject)}`,
-					detail: "Current Session Stats (Read Only)",
-					alwaysShow: true
-				},
-				{
-					label: isPaused ? "$(play) Resume Tracking" : "$(debug-pause) Pause Tracking",
-					description: isPaused ? "Enable time tracking" : "Temporarily stop tracking",
-					detail: "Actions"
-				},
-				{
-					label: "$(sync) Sync Now",
-					description: "Force sync to Supabase",
-				},
-				{
-					label: "$(dashboard) Open Dashboard",
-					description: "View full stats online",
-				}
-			];
+			const statsMsg = `Today: ${formatHMS(tToday)}  |  Project: ${formatHMS(tProject)}`;
+			const actionToggle = isPaused ? "▶ Resume Tracking" : "⏸ Pause Tracking";
+			const actionSync = "☁ Sync Now";
+			const actionDash = "📊 Dashboard";
 
-			const selection = await vscode.window.showQuickPick(items, {
-				placeHolder: "Jervi Time Tracker Menu",
-			});
+			// "Popup" style notification
+			const selection = await vscode.window.showInformationMessage(
+				statsMsg,
+				actionToggle,
+				actionSync,
+				actionDash
+			);
 
-			if (!selection) return;
-
-			if (selection.label.includes("Resume") || selection.label.includes("Pause")) {
+			if (selection === actionToggle) {
 				await toggleTracking();
-			} else if (selection.label.includes("Sync Now")) {
+			} else if (selection === actionSync) {
 				vscode.commands.executeCommand("ctc.syncNow");
-			} else if (selection.label.includes("Open Dashboard")) {
+			} else if (selection === actionDash) {
 				vscode.env.openExternal(vscode.Uri.parse("http://jervi-counts-ur-dev-time.vercel.app/"));
 			}
 		})
