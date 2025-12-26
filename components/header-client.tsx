@@ -6,11 +6,7 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
 
-interface HeaderProps {
-  user: any | null;
-}
-
-export function HeaderClient({ user }: HeaderProps) {
+export function HeaderClient({ user }: { user: any }) {
   const [isOpen, setIsOpen] = useState(false);
 
   // Close menu on route change

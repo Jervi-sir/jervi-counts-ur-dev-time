@@ -13,6 +13,9 @@ export async function signInWithGithub() {
     provider: "github",
     options: {
       redirectTo: `${origin}/auth/callback`,
+      queryParams: {
+        prompt: "consent",
+      },
     },
   });
 
