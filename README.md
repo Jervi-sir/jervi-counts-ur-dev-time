@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
-
-## Getting Started
-
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+### seeding fake data
+```
+npx tsx db/seed.ts
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### supabase queries
+```
+-- 1) function that runs with elevated privileges
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, username, full_name, avatar_url)
+  values (
+    new.id,
+    coalesce(
+      new.raw_user_meta_data->>'user_name',
+      new.raw_user_meta_data->>'preferred_username',
+      new.raw_user_meta_data->>'login'
+    ),
+    coalesce(
+      new.raw_user_meta_data->>'full_name',
+      new.raw_user_meta_data->>'name'
+    ),
+    new.raw_user_meta_data->>'avatar_url'
+  )
+  on conflict (id) do nothing;
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+  return new;
+end;
+$$;
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+-- 2) trigger on auth.users
+drop trigger if exists on_auth_user_created on auth.users;
 
-## Learn More
+create trigger on_auth_user_created
+after insert on auth.users
+for each row
+execute procedure public.handle_new_user();
+```
 
-To learn more about Next.js, take a look at the following resources:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Enable RLS
+```
+alter table public.profiles enable row level security;
+alter table public.daily_totals enable row level security;
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Profiles policies
+```
+-- Everyone logged-in can read profiles (for leaderboard)
+create policy "profiles_select_authenticated"
+on public.profiles for select
+to authenticated
+using (true);
 
-## Deploy on Vercel
+-- User can update their own profile
+create policy "profiles_update_own"
+on public.profiles for update
+to authenticated
+using (auth.uid() = id)
+with check (auth.uid() = id);
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Daily totals policies
+```
+-- Logged-in users can read totals (leaderboard)
+create policy "daily_totals_select_authenticated"
+on public.daily_totals for select
+to authenticated
+using (true);
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+-- User can insert/update their own totals
+create policy "daily_totals_insert_own"
+on public.daily_totals for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+create policy "daily_totals_update_own"
+on public.daily_totals for update
+to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+```
