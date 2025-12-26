@@ -20,9 +20,10 @@ function formatHMS(totalSeconds: number) {
 }
 
 export function activate(context: vscode.ExtensionContext) {
+	// Status Bar
 	const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-	status.command = "ctc.toggleTracking";
-	status.tooltip = "Code Time Counter (click to toggle)";
+	status.command = "ctc.openMenu";
+	status.tooltip = "Click to open menu";
 	status.show();
 
 	const state: ExtensionState = {
@@ -123,9 +124,8 @@ export function activate(context: vscode.ExtensionContext) {
 		const lastSync = formatLastSync(state.lastSyncAt);
 		const authStatus = username ? `Signed in as: ${username}` : "Not signed in";
 
-		status.tooltip = state.enabled
-			? `Tracking ON (click to pause)\n\nProject Total: ${formatHMS(tProject)}\nToday Total: ${formatHMS(tToday)}\n\n${authStatus}\nLast Sync: ${lastSync}`
-			: `Tracking OFF (click to resume)\n\nProject Total: ${formatHMS(tProject)}\nToday Total: ${formatHMS(tToday)}\n\n${authStatus}\nLast Sync: ${lastSync}`;
+		const statusText = state.enabled ? "Tracking ON" : "Tracking OFF";
+		status.tooltip = `Jervi Tracker\n${statusText}\nToday: ${formatHMS(tToday)}\n${authStatus}\nLast Sync: ${lastSync}\n\nClick for Menu`;
 	}
 
 	async function rollDayIfNeeded() {
@@ -227,14 +227,63 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push({ dispose: () => clearInterval(syncInterval) });
 	context.subscriptions.push(status);
 
+	// Shared logic for toggling
+	async function toggleTracking() {
+		state.enabled = !state.enabled;
+		await context.globalState.update(STORAGE_KEYS.ENABLED, state.enabled);
+		state.lastTickAt = Date.now(); // prevent counting jump
+		setStatusText();
+		vscode.window.showInformationMessage(`Code Time Counter: ${state.enabled ? "ON" : "OFF"}`);
+	}
+
 	// Commands
 	context.subscriptions.push(
 		vscode.commands.registerCommand("ctc.toggleTracking", async () => {
-			state.enabled = !state.enabled;
-			await context.globalState.update(STORAGE_KEYS.ENABLED, state.enabled);
-			state.lastTickAt = Date.now(); // prevent counting jump
-			setStatusText();
-			vscode.window.showInformationMessage(`Code Time Counter: ${state.enabled ? "ON" : "OFF"}`);
+			await toggleTracking();
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand("ctc.openMenu", async () => {
+			const tToday = getTodaySeconds();
+			const tProject = getProjectSeconds();
+			const isPaused = !state.enabled;
+
+			const items: vscode.QuickPickItem[] = [
+				{
+					label: `📊 Today: ${formatHMS(tToday)}`,
+					description: `Project: ${formatHMS(tProject)}`,
+					detail: "Current Session Stats (Read Only)",
+					alwaysShow: true
+				},
+				{
+					label: isPaused ? "$(play) Resume Tracking" : "$(debug-pause) Pause Tracking",
+					description: isPaused ? "Enable time tracking" : "Temporarily stop tracking",
+					detail: "Actions"
+				},
+				{
+					label: "$(sync) Sync Now",
+					description: "Force sync to Supabase",
+				},
+				{
+					label: "$(dashboard) Open Dashboard",
+					description: "View full stats online",
+				}
+			];
+
+			const selection = await vscode.window.showQuickPick(items, {
+				placeHolder: "Jervi Time Tracker Menu",
+			});
+
+			if (!selection) return;
+
+			if (selection.label.includes("Resume") || selection.label.includes("Pause")) {
+				await toggleTracking();
+			} else if (selection.label.includes("Sync Now")) {
+				vscode.commands.executeCommand("ctc.syncNow");
+			} else if (selection.label.includes("Open Dashboard")) {
+				vscode.env.openExternal(vscode.Uri.parse("http://jervi-counts-ur-dev-time.vercel.app/"));
+			}
 		})
 	);
 
