@@ -101,6 +101,11 @@ export function activate(context: vscode.ExtensionContext) {
 		return totals[dayKey()] ?? 0;
 	}
 
+	function getTodayTotalSeconds() {
+		const totals = readDailyTotalSeconds();
+		return totals[dayKey()] ?? 0;
+	}
+
 	function getProjectSeconds() {
 		return context.workspaceState.get<number>(STORAGE_KEYS.PROJECT, 0);
 	}
@@ -246,10 +251,11 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand("ctc.openMenu", async () => {
 			const tToday = getTodaySeconds();
+			const tTotal = getTodayTotalSeconds();
 			const tProject = getProjectSeconds();
 			const isPaused = !state.enabled;
 
-			const statsMsg = `Today: ${formatHMS(tToday)}  |  Project: ${formatHMS(tProject)}`;
+			const statsMsg = `Focused: ${formatHMS(tToday)} | Total: ${formatHMS(tTotal)} | Project: ${formatHMS(tProject)}`;
 			const actionToggle = isPaused ? "▶ Resume Tracking" : "⏸ Pause Tracking";
 			const actionSync = "☁ Sync Now";
 			const actionDash = "📊 Dashboard";

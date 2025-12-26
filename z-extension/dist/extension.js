@@ -420,6 +420,10 @@ function activate(context) {
         const totals = readDailyTotals();
         return totals[dayKey()] ?? 0;
     }
+    function getTodayTotalSeconds() {
+        const totals = readDailyTotalSeconds();
+        return totals[dayKey()] ?? 0;
+    }
     function getProjectSeconds() {
         return context.workspaceState.get(config_1.STORAGE_KEYS.PROJECT, 0);
     }
@@ -535,9 +539,10 @@ function activate(context) {
     }));
     context.subscriptions.push(vscode.commands.registerCommand("ctc.openMenu", async () => {
         const tToday = getTodaySeconds();
+        const tTotal = getTodayTotalSeconds();
         const tProject = getProjectSeconds();
         const isPaused = !state.enabled;
-        const statsMsg = `Today: ${formatHMS(tToday)}  |  Project: ${formatHMS(tProject)}`;
+        const statsMsg = `Focused: ${formatHMS(tToday)} | Total: ${formatHMS(tTotal)} | Project: ${formatHMS(tProject)}`;
         const actionToggle = isPaused ? "▶ Resume Tracking" : "⏸ Pause Tracking";
         const actionSync = "☁ Sync Now";
         const actionDash = "📊 Dashboard";
