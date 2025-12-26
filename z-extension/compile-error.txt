@@ -1,0 +1,39 @@
+﻿node.exe :     [webpack-cli] Compiler 
+starting... 
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" 
+"C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpeci 
+   fied: (    [webpack-cli] Compiler   
+  starting... :String) [], RemoteExc   
+ eption
+    + FullyQualifiedErrorId : NativeCo 
+   mmandError
+ 
+    [webpack-cli] Compiler is using 
+config: 'C:\Users\Jervi\Desktop\jervi-c
+ounts-ur-dev-time-extension\webpack.con
+fig.js'
+    [webpack-cli] Compiler finished
+asset [1m[32mextension.js[39m[22m 19.8 KiB [1m[32m[emitted][39m[22m (name: main) 1 related asset
+[1m./src/extension.ts[39m[22m 9.91 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m [1m[31m[2 errors][39m[22m
+[1mexternal "vscode"[39m[22m 42 bytes [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+[1m./src/config.ts[39m[22m 966 bytes [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+[1m./src/auth.ts[39m[22m 2.89 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+[1m./src/sync.ts[39m[22m 3.5 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+
+[1m[31mERROR[39m[22m in [1mC:\Users\Jervi\Desktop\jervi-counts-ur-dev-time-extension\src\extension.ts[39m[22m
+[1m./src/extension.ts[39m[22m [1m[32m38:83-87[39m[22m
+[1m[tsl] [1m[31mERROR[39m[22m[1m in C:\Users\Jervi\Desktop\jervi-counts-ur-dev-time-extension\src\extension.ts(38,84)
+      TS2345: Argument of type 'null' is not assignable to parameter of type 'string'.[39m[22m
+ts-loader-default_e3b0c44298fc1c14
+
+[1m[31mERROR[39m[22m in [1mC:\Users\Jervi\Desktop\jervi-counts-ur-dev-time-extension\src\extension.ts[39m[22m
+[1m./src/extension.ts[39m[22m [1m[32m39:89-93[39m[22m
+[1m[tsl] [1m[31mERROR[39m[22m[1m in C:\Users\Jervi\Desktop\jervi-counts-ur-dev-time-extension\src\extension.ts(39,90)
+      TS2345: Argument of type 'null' is not assignable to parameter of type 'string'.[39m[22m
+ts-loader-default_e3b0c44298fc1c14
+
+webpack 5.104.1 compiled with [1m[31m2 errors[39m[22m in 2168 ms

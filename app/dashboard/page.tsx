@@ -2,7 +2,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { signOut } from "@/app/auth/actions";
 import { ActivityHistory } from "@/components/dashboard/activity-history";
 
 // Helper to format seconds into H:MM
@@ -44,7 +43,7 @@ export default async function DashboardPage() {
     // 1. Fetch Today's Stats
     supabase
       .from("daily_totals")
-      .select("focused_seconds")
+      .select("focused_seconds, total_seconds")
       .eq("user_id", user.id)
       .eq("day", today)
       .single(),
@@ -52,17 +51,19 @@ export default async function DashboardPage() {
     // 2. Fetch Last 7 Days (for summary card)
     supabase
       .from("daily_totals")
-      .select("focused_seconds")
+      .select("focused_seconds, total_seconds")
       .eq("user_id", user.id)
       .gte("day", sevenDaysAgo)
       .lte("day", today),
   ]);
 
-  const currentSeconds = todayData.data?.focused_seconds || 0;
+  const currentFocusedSeconds = todayData.data?.focused_seconds || 0;
+  const currentTotalSeconds = todayData.data?.total_seconds || 0;
   const weeklyStatsForCard = weekData.data || [];
 
-  // Calculate total for the week card
-  const weekTotalSeconds = weeklyStatsForCard.reduce((acc, curr) => acc + curr.focused_seconds, 0);
+  // Calculate totals for the week card
+  const weekTotalSeconds = weeklyStatsForCard.reduce((acc, curr) => acc + (curr.total_seconds || 0), 0);
+  const weekFocusedSeconds = weeklyStatsForCard.reduce((acc, curr) => acc + curr.focused_seconds, 0);
 
   return (
     <div className="w-full max-w-4xl mx-auto p-8 space-y-8">
@@ -70,10 +71,10 @@ export default async function DashboardPage() {
       <div className="grid gap-6 md:grid-cols-2">
         <div className="rounded-xl border bg-card text-card-foreground shadow">
           <div className="p-6 flex flex-col space-y-1">
-            <span className="text-sm font-medium text-muted-foreground">Today`s Focus</span>
-            <span className="text-4xl font-bold tracking-tight">{formatDuration(currentSeconds)}</span>
+            <span className="text-sm font-medium text-muted-foreground">Today&apos;s Time</span>
+            <span className="text-4xl font-bold tracking-tight">{formatDuration(currentTotalSeconds)}</span>
             <p className="text-xs text-muted-foreground">
-              {currentSeconds > 0 ? "Keep it up!" : "No activity recorded yet today."}
+              {currentFocusedSeconds > 0 ? `${formatDuration(currentFocusedSeconds)} focused` : "No activity recorded yet today."}
             </p>
           </div>
         </div>
@@ -82,7 +83,7 @@ export default async function DashboardPage() {
           <div className="p-6 flex flex-col space-y-1">
             <span className="text-sm font-medium text-muted-foreground">Last 7 Days</span>
             <span className="text-4xl font-bold tracking-tight">{formatDuration(weekTotalSeconds)}</span>
-            <p className="text-xs text-muted-foreground">Total focused time.</p>
+            <p className="text-xs text-muted-foreground">{formatDuration(weekFocusedSeconds)} focused time.</p>
           </div>
         </div>
       </div>

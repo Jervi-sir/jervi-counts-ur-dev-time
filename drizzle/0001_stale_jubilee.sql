@@ -1,0 +1,2 @@
+ALTER TABLE "daily_totals" ADD COLUMN "total_seconds" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "daily_totals" ADD CONSTRAINT "daily_totals_total_seconds_nonneg" CHECK ("daily_totals"."total_seconds" >= 0);

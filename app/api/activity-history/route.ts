@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   // Fetch paginated history
   const { data: historyData, count } = await supabase
     .from("daily_totals")
-    .select("day, focused_seconds", { count: "exact" })
+    .select("day, focused_seconds, total_seconds", { count: "exact" })
     .eq("user_id", user.id)
     .order("day", { ascending: false })
     .range(offset, offset + ITEMS_PER_PAGE - 1);

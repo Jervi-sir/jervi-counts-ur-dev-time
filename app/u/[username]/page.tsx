@@ -42,13 +42,21 @@ export default async function UserProfilePage({ params }: Props) {
     )
     .orderBy(desc(dailyTotals.day));
 
-  // 3. Stats Overview
-  const totalSecondsAllTimeResult = await db
+  // 3. Stats Overview - Focused Time
+  const totalFocusedSecondsResult = await db
     .select({ total: sql<number>`cast(sum(${dailyTotals.focusedSeconds}) as int)` })
     .from(dailyTotals)
     .where(eq(dailyTotals.userId, user.id));
 
-  const totalSeconds = totalSecondsAllTimeResult[0]?.total || 0;
+  const totalFocusedSeconds = totalFocusedSecondsResult[0]?.total || 0;
+
+  // Total Open Time
+  const totalOpenSecondsResult = await db
+    .select({ total: sql<number>`cast(sum(${dailyTotals.totalSeconds}) as int)` })
+    .from(dailyTotals)
+    .where(eq(dailyTotals.userId, user.id));
+
+  const totalOpenSeconds = totalOpenSecondsResult[0]?.total || 0;
 
   // 4. Languages (Last 30 days)
   const languageStats = await db
@@ -76,10 +84,14 @@ export default async function UserProfilePage({ params }: Props) {
           </div>
         </div>
 
-        <div className="md:ml-auto flex gap-8 md:gap-12 mr-8">
+        <div className="md:ml-auto flex gap-6 md:gap-8 mr-8">
           <div className="text-center">
-            <div className="text-2xl font-bold tracking-tight">{formatDuration(totalSeconds)}</div>
-            <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">All Time</div>
+            <div className="text-2xl font-bold tracking-tight">{formatDuration(totalOpenSeconds)}</div>
+            <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Total Time</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold tracking-tight">{formatDuration(totalFocusedSeconds)}</div>
+            <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Focused</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold tracking-tight">{activity.length}</div>
@@ -113,8 +125,13 @@ export default async function UserProfilePage({ params }: Props) {
                       {new Date(item.day).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long' })}
                     </p>
                   </div>
-                  <div className="font-mono font-medium">
-                    {formatDuration(item.focusedSeconds)}
+                  <div className="text-right">
+                    <div className="font-mono font-medium">
+                      {formatDuration(item.totalSeconds)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {formatDuration(item.focusedSeconds)} focused
+                    </div>
                   </div>
                 </div>
               ))}

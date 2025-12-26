@@ -1,9 +1,6 @@
 
 import { db } from "@/db";
 import { profiles, dailyTotals } from "@/db/schema";
-import { createClient } from "@/utils/supabase/server";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { desc, eq, gte, sql } from "drizzle-orm";
 import Link from "next/link";
 import { Pagination } from "@/components/pagination";
@@ -22,15 +19,6 @@ export default async function LeaderboardPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // if (!user) return redirect("/login");
-
   const params = await searchParams;
   const page = Number(params.page) || 1;
   const offset = (page - 1) * ITEMS_PER_PAGE;
@@ -46,12 +34,13 @@ export default async function LeaderboardPage({
       username: profiles.username,
       avatarUrl: profiles.avatarUrl,
       focusedSeconds: dailyTotals.focusedSeconds,
+      totalSeconds: dailyTotals.totalSeconds,
       userId: dailyTotals.userId,
     })
     .from(dailyTotals)
     .innerJoin(profiles, eq(dailyTotals.userId, profiles.id))
     .where(eq(dailyTotals.day, today))
-    .orderBy(desc(dailyTotals.focusedSeconds))
+    .orderBy(desc(dailyTotals.totalSeconds))
     .limit(ITEMS_PER_PAGE)
     .offset(offset);
 
@@ -61,13 +50,14 @@ export default async function LeaderboardPage({
       username: profiles.username,
       avatarUrl: profiles.avatarUrl,
       userId: dailyTotals.userId,
-      totalSeconds: sql<number>`cast(sum(${dailyTotals.focusedSeconds}) as int)`,
+      totalSeconds: sql<number>`cast(sum(${dailyTotals.totalSeconds}) as int)`,
+      focusedSeconds: sql<number>`cast(sum(${dailyTotals.focusedSeconds}) as int)`,
     })
     .from(dailyTotals)
     .innerJoin(profiles, eq(dailyTotals.userId, profiles.id))
     .where(gte(dailyTotals.day, sevenDaysAgoStr))
     .groupBy(dailyTotals.userId, profiles.username, profiles.avatarUrl)
-    .orderBy(desc(sql`sum(${dailyTotals.focusedSeconds})`))
+    .orderBy(desc(sql`sum(${dailyTotals.totalSeconds})`))
     .limit(ITEMS_PER_PAGE)
     .offset(offset);
 
@@ -132,8 +122,13 @@ export default async function LeaderboardPage({
                           </Link>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right font-mono font-medium">
-                        {formatDuration(score.focusedSeconds)}
+                      <td className="px-4 py-3 text-right">
+                        <div className="font-mono font-medium">
+                          {formatDuration(score.totalSeconds)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {formatDuration(score.focusedSeconds)} focused
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -184,8 +179,13 @@ export default async function LeaderboardPage({
                           </Link>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right font-mono font-medium">
-                        {formatDuration(score.totalSeconds)}
+                      <td className="px-4 py-3 text-right">
+                        <div className="font-mono font-medium">
+                          {formatDuration(score.totalSeconds)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {formatDuration(score.focusedSeconds)} focused
+                        </div>
                       </td>
                     </tr>
                   ))}

@@ -15,6 +15,7 @@ function formatDuration(seconds: number) {
 interface ActivityItem {
   day: string;
   focused_seconds: number;
+  total_seconds: number;
 }
 
 export function ActivityHistory() {
@@ -90,13 +91,18 @@ export function ActivityHistory() {
                       <div
                         className="h-full bg-primary"
                         style={{
-                          width: `${Math.min((stat.focused_seconds / 28800) * 100, 100)}%`,
+                          width: `${Math.min((stat.total_seconds / 28800) * 100, 100)}%`,
                         }}
                       />
                     </div>
-                    <span className="text-sm font-mono w-16 text-right">
-                      {formatDuration(stat.focused_seconds)}
-                    </span>
+                    <div className="text-right">
+                      <div className="text-sm font-mono font-medium">
+                        {formatDuration(stat.total_seconds)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {formatDuration(stat.focused_seconds)} focused
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}

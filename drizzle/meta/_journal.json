@@ -8,6 +8,13 @@
       "when": 1766715979756,
       "tag": "0000_boring_sinister_six",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1766760939771,
+      "tag": "0001_stale_jubilee",
+      "breakpoints": true
     }
   ]
 }

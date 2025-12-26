@@ -80,10 +80,16 @@ async function seed() {
       const isCodingDay = Math.random() > 0.1; // 90% chance of coding
       const focusedSeconds = isCodingDay ? randomInt(1800, 28800) : 0;
 
+      // Total seconds should be higher than focused (includes idle time)
+      // Add 20-50% additional time for idle/open time
+      const idleMultiplier = 1 + (Math.random() * 0.3 + 0.2); // 1.2 to 1.5
+      const totalSeconds = Math.floor(focusedSeconds * idleMultiplier);
+
       totalsData.push({
         userId: USER_ID,
         day: day,
         focusedSeconds: focusedSeconds,
+        totalSeconds: totalSeconds,
         source: "vscode",
       });
 
